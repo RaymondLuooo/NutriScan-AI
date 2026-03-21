@@ -1,0 +1,7 @@
+{
+  "name": "NutriScan AI",
+  "description": "Upload a photo of your dish to identify ingredients and get a detailed nutritional breakdown.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
