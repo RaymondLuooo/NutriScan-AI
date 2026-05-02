@@ -1,6 +1,6 @@
 {
   "name": "NutriScan AI",
-  "description": "Upload a photo of your dish to identify ingredients and get a detailed nutritional breakdown.",
+  "description": "上传餐食照片，识别食材并获得营养估算和健康评分。",
   "requestFramePermissions": [
     "camera"
   ]

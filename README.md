@@ -35,39 +35,29 @@ npm run dev
 
 ---
 
-## 部署到 GitHub Pages (Deploy to GitHub Pages)
+## 部署说明 (Deployment)
 
-本项目使用 **GitHub Actions** 自动部署，每次推送到 `main` 分支时触发构建和部署。
+Gemini API Key 现在只在服务端 `/api/analyze` 使用，不会被注入前端 bundle。
+
+GitHub Pages 只能托管静态文件，不能运行 `/api/analyze`。Netlify 部署会使用 `netlify/functions/analyze.ts` 提供该接口。
+
+本地开发和 `npm run preview` 时，Vite 会提供 `/api/analyze` middleware。
 
 ### 首次配置步骤
 
-**1. 启用 GitHub Pages**
+**1. 配置环境变量**
 
-进入仓库 `Settings → Pages`，将 **Source** 设置为 `GitHub Actions`。
-
-**2. 配置 Secrets**
-
-进入仓库 `Settings → Secrets and variables → Actions → New repository secret`：
+在服务端运行环境中配置：
 
 | Secret 名称 | 说明 |
 |---|---|
-| `GEMINI_API_KEY` | 你的 Gemini API Key |
+| `GEMINI_API_KEY` | 仅供 `/api/analyze` 服务端接口读取的 Gemini API Key |
 
-> ⚠️ **注意**: `GEMINI_API_KEY` 会在构建时被注入到前端 bundle，对外可见。建议在 Google AI Studio 中为该 Key 设置 HTTP Referrer 限制，只允许你的 GitHub Pages 域名访问。
-
-**3. 推送代码触发部署**
+**2. 构建前端**
 
 ```bash
-git add .
-git commit -m "feat: initial setup"
-git push origin main
+npm run build
 ```
-
-部署完成后，访问 `https://<你的用户名>.github.io/<仓库名>/`。
-
-### 手动触发部署
-
-进入仓库 `Actions` 标签页 → `Deploy to GitHub Pages` → `Run workflow`。
 
 ---
 
@@ -89,14 +79,22 @@ git push origin main
 NutriScan-AI/
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml      # GitHub Actions 部署配置
+│       └── deploy.yml      # GitHub Pages 静态前端部署配置
+├── api/
+│   └── analyze.ts          # 服务端分析接口
+├── netlify/
+│   └── functions/
+│       └── analyze.ts      # Netlify Function 分析接口
 ├── src/
+│   ├── analysisTypes.ts    # 前后端共享类型
 │   ├── App.tsx             # 主应用组件
+│   ├── geminiAnalysis.ts   # Gemini 服务端调用逻辑
 │   ├── main.tsx            # 应用入口
 │   └── index.css           # 全局样式
 ├── .env.example            # 环境变量模板
 ├── .gitignore
 ├── index.html
+├── netlify.toml            # Netlify 构建配置
 ├── package.json
 ├── tsconfig.json
 └── vite.config.ts

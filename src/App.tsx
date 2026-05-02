@@ -1,154 +1,131 @@
 import React, { useState, useRef } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { Camera, Upload, Loader2, Utensils, Info, AlertCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import type { AnalysisResult } from './analysisTypes';
 
-// --- Types ---
-interface Ingredient {
-  name: string;
-  amount?: string;
-  description?: string;
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
-interface Nutrition {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber: number;
-  sugar?: number;
-  sodium?: number;
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
-interface AnalysisResult {
-  dishName: string;
-  description: string;
-  ingredients: Ingredient[];
-  nutrition: Nutrition;
-  healthScore: number; // 1-100
-}
+async function resizeImageDataUrl(dataUrl: string, maxSize = 1280) {
+  const img = await loadImage(dataUrl);
+  const scale = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.max(1, Math.round(img.naturalWidth * scale));
+  const height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
 
-// --- Constants ---
-const MODEL_NAME = "gemini-3-flash-preview";
+  if (!ctx) {
+    throw new Error('无法准备图片用于分析。');
+  }
+
+  ctx.drawImage(img, 0, 0, width, height);
+  return {
+    imageData: canvas.toDataURL('image/jpeg', 0.82),
+    mimeType: 'image/jpeg',
+  };
+}
 
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const analysisRequestIdRef = useRef(0);
+  const cameraRequestIdRef = useRef(0);
   const [isCameraActive, setIsCameraActive] = useState(false);
 
   // --- AI Logic ---
-  const analyzeImage = async (base64Data: string) => {
+  const analyzeImage = async (imageData: string, mimeType: string) => {
+    const requestId = ++analysisRequestIdRef.current;
     setIsAnalyzing(true);
     setError(null);
+    setResult(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      
-      const prompt = `Analyze this dish image. Provide a detailed breakdown including:
-      1. The name of the dish.
-      2. A brief description of the dish.
-      3. A list of main ingredients identified.
-      4. Estimated nutritional values (calories, protein, carbs, fat, fiber) for the entire portion shown.
-      5. A health score from 1 to 100 based on nutritional balance.
-      
-      Return the data strictly in JSON format.`;
-
-      const response = await ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: base64Data.split(',')[1],
-                },
-              },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              dishName: { type: Type.STRING },
-              description: { type: Type.STRING },
-              ingredients: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    amount: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                  },
-                  required: ["name"],
-                },
-              },
-              nutrition: {
-                type: Type.OBJECT,
-                properties: {
-                  calories: { type: Type.NUMBER },
-                  protein: { type: Type.NUMBER },
-                  carbs: { type: Type.NUMBER },
-                  fat: { type: Type.NUMBER },
-                  fiber: { type: Type.NUMBER },
-                  sugar: { type: Type.NUMBER },
-                  sodium: { type: Type.NUMBER },
-                },
-                required: ["calories", "protein", "carbs", "fat", "fiber"],
-              },
-              healthScore: { type: Type.NUMBER },
-            },
-            required: ["dishName", "description", "ingredients", "nutrition", "healthScore"],
-          },
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ imageData, mimeType }),
       });
 
-      const text = response.text;
-      if (text) {
-        const parsedResult = JSON.parse(text) as AnalysisResult;
-        setResult(parsedResult);
-      } else {
-        throw new Error("No analysis data received from AI.");
+      const responseText = await response.text();
+      const payload = responseText ? JSON.parse(responseText) : {};
+      if (!response.ok) {
+        throw new Error(payload.error || '未收到 AI 分析结果。');
+      }
+
+      if (requestId === analysisRequestIdRef.current) {
+        setResult(payload as AnalysisResult);
       }
     } catch (err) {
       console.error("Analysis Error:", err);
-      setError("Failed to analyze the image. Please try again with a clearer photo.");
+      if (requestId === analysisRequestIdRef.current) {
+        setError("图片分析失败，请换一张更清晰的照片后重试。");
+      }
     } finally {
-      setIsAnalyzing(false);
+      if (requestId === analysisRequestIdRef.current) {
+        setIsAnalyzing(false);
+      }
     }
   };
 
   // --- Handlers ---
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setImage(base64);
-        analyzeImage(base64);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const originalDataUrl = await readFileAsDataUrl(file);
+        const { imageData, mimeType } = await resizeImageDataUrl(originalDataUrl);
+        setImage(imageData);
+        setImageMimeType(mimeType);
+        analyzeImage(imageData, mimeType);
+      } catch (err) {
+        console.error("Image Upload Error:", err);
+        setError("无法处理这张图片，请换一张照片试试。");
+      }
     }
   };
 
   const startCamera = async () => {
+    const requestId = ++cameraRequestIdRef.current;
     setIsCameraActive(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (requestId !== cameraRequestIdRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+      } else {
+        stream.getTracks().forEach(track => track.stop());
+        setIsCameraActive(false);
       }
     } catch (err) {
       console.error("Camera Error:", err);
-      setError("Could not access camera. Please check permissions.");
+      setError("无法访问摄像头，请检查浏览器权限设置。");
       setIsCameraActive(false);
     }
   };
@@ -156,20 +133,23 @@ export default function App() {
   const capturePhoto = () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      const scale = Math.min(1, 1280 / Math.max(videoRef.current.videoWidth, videoRef.current.videoHeight));
+      canvas.width = Math.max(1, Math.round(videoRef.current.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(videoRef.current.videoHeight * scale));
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const base64 = canvas.toDataURL('image/jpeg');
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL('image/jpeg', 0.82);
         setImage(base64);
+        setImageMimeType('image/jpeg');
         stopCamera();
-        analyzeImage(base64);
+        analyzeImage(base64, 'image/jpeg');
       }
     }
   };
 
   const stopCamera = () => {
+    cameraRequestIdRef.current += 1;
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
@@ -179,7 +159,10 @@ export default function App() {
   };
 
   const reset = () => {
+    analysisRequestIdRef.current += 1;
+    stopCamera();
     setImage(null);
+    setImageMimeType(null);
     setResult(null);
     setError(null);
     setIsAnalyzing(false);
@@ -202,7 +185,7 @@ export default function App() {
               className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
             >
               <RefreshCw size={16} />
-              New Scan
+              重新扫描
             </button>
           )}
         </div>
@@ -220,11 +203,11 @@ export default function App() {
             >
               <div className="max-w-xl">
                 <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-                  Know exactly what's <br /> on your plate.
+                  看懂这一餐的 <br /> 营养组成。
                 </h2>
                 <p className="text-lg text-gray-500 mb-10">
-                  Upload a photo of your meal to get instant nutritional analysis, 
-                  ingredient identification, and health insights.
+                  上传或拍摄餐食照片，即刻识别主要食材，
+                  估算营养成分，并获得健康评分。
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -233,14 +216,14 @@ export default function App() {
                     className="flex items-center justify-center gap-3 bg-white border border-black/10 px-8 py-4 rounded-2xl font-medium hover:bg-gray-50 transition-all shadow-sm active:scale-95"
                   >
                     <Upload size={20} className="text-emerald-500" />
-                    Upload Photo
+                    上传照片
                   </button>
                   <button
                     onClick={startCamera}
                     className="flex items-center justify-center gap-3 bg-emerald-500 text-white px-8 py-4 rounded-2xl font-medium hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200 active:scale-95"
                   >
                     <Camera size={20} />
-                    Take Photo
+                    拍照分析
                   </button>
                 </div>
                 <input
@@ -271,7 +254,7 @@ export default function App() {
                   onClick={stopCamera}
                   className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30"
                 >
-                  <span className="text-sm font-medium">Cancel</span>
+                  <span className="text-sm font-medium">取消</span>
                 </button>
                 <button
                   onClick={capturePhoto}
@@ -294,14 +277,14 @@ export default function App() {
                 <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5">
                   <img
                     src={image!}
-                    alt="Uploaded dish"
+                    alt="已上传的餐食"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
                   {isAnalyzing && (
                     <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center text-emerald-600">
                       <Loader2 size={48} className="animate-spin mb-4" />
-                      <p className="font-medium animate-pulse">Analyzing your meal...</p>
+                      <p className="font-medium animate-pulse">正在分析这餐...</p>
                     </div>
                   )}
                 </div>
@@ -313,13 +296,13 @@ export default function App() {
                     className="bg-white p-8 rounded-3xl shadow-sm border border-black/5"
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Health Score</h3>
+                      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">健康评分</h3>
                       <div className={`px-3 py-1 rounded-full text-xs font-bold ${
                         result.healthScore > 70 ? 'bg-emerald-100 text-emerald-700' : 
                         result.healthScore > 40 ? 'bg-amber-100 text-amber-700' : 
                         'bg-rose-100 text-rose-700'
                       }`}>
-                        {result.healthScore > 70 ? 'Excellent' : result.healthScore > 40 ? 'Good' : 'Moderate'}
+                        {result.healthScore > 70 ? '优秀' : result.healthScore > 40 ? '良好' : '一般'}
                       </div>
                     </div>
                     <div className="flex items-end gap-4">
@@ -348,13 +331,13 @@ export default function App() {
                   <div className="bg-rose-50 border border-rose-100 p-6 rounded-2xl flex items-start gap-4 text-rose-800">
                     <AlertCircle className="shrink-0" />
                     <div>
-                      <p className="font-semibold">Analysis Failed</p>
+                      <p className="font-semibold">分析失败</p>
                       <p className="text-sm opacity-90">{error}</p>
                       <button 
-                        onClick={() => image && analyzeImage(image)}
+                        onClick={() => image && imageMimeType && analyzeImage(image, imageMimeType)}
                         className="mt-3 text-sm font-bold underline underline-offset-4"
                       >
-                        Try Again
+                        重试
                       </button>
                     </div>
                   </div>
@@ -370,16 +353,16 @@ export default function App() {
                     <section>
                       <div className="flex items-center gap-2 mb-6">
                         <Info size={18} className="text-emerald-500" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Nutritional Breakdown</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">营养估算</h3>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <NutrientCard label="Calories" value={result.nutrition.calories} unit="kcal" color="bg-gray-900 text-white" />
-                        <NutrientCard label="Protein" value={result.nutrition.protein} unit="g" color="bg-emerald-50" />
-                        <NutrientCard label="Carbs" value={result.nutrition.carbs} unit="g" color="bg-blue-50" />
-                        <NutrientCard label="Fat" value={result.nutrition.fat} unit="g" color="bg-amber-50" />
-                        <NutrientCard label="Fiber" value={result.nutrition.fiber} unit="g" color="bg-purple-50" />
+                        <NutrientCard label="热量" value={result.nutrition.calories} unit="kcal" color="bg-gray-900 text-white" />
+                        <NutrientCard label="蛋白质" value={result.nutrition.protein} unit="g" color="bg-emerald-50" />
+                        <NutrientCard label="碳水" value={result.nutrition.carbs} unit="g" color="bg-blue-50" />
+                        <NutrientCard label="脂肪" value={result.nutrition.fat} unit="g" color="bg-amber-50" />
+                        <NutrientCard label="膳食纤维" value={result.nutrition.fiber} unit="g" color="bg-purple-50" />
                         {result.nutrition.sugar !== undefined && (
-                          <NutrientCard label="Sugar" value={result.nutrition.sugar} unit="g" color="bg-rose-50" />
+                          <NutrientCard label="糖" value={result.nutrition.sugar} unit="g" color="bg-rose-50" />
                         )}
                       </div>
                     </section>
@@ -387,7 +370,7 @@ export default function App() {
                     <section>
                       <div className="flex items-center gap-2 mb-6">
                         <Utensils size={18} className="text-emerald-500" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">Ingredients Identified</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">识别到的食材</h3>
                       </div>
                       <div className="grid grid-cols-1 gap-3">
                         {result.ingredients.map((ing, idx) => (
@@ -419,7 +402,7 @@ export default function App() {
                   !isAnalyzing && !error && (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400 py-20">
                       <Loader2 size={40} className="animate-spin mb-4 opacity-20" />
-                      <p>Waiting for analysis...</p>
+                      <p>等待分析结果...</p>
                     </div>
                   )
                 )}
@@ -432,7 +415,7 @@ export default function App() {
       {/* Footer */}
       <footer className="max-w-5xl mx-auto px-6 py-12 border-t border-black/5 text-center">
         <p className="text-sm text-gray-400">
-          Powered by Gemini AI • Nutritional values are estimates based on visual analysis.
+          由 Gemini AI 提供分析能力；营养数据基于图片估算，仅供参考。
         </p>
       </footer>
     </div>
