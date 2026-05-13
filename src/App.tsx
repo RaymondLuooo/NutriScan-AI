@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Camera, Upload, Loader2, Utensils, Info, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useRef } from 'react'; // useState/useRef: 管理图片状态与 DOM 引用
+import { Camera, Upload, Loader2, Utensils, AlertCircle } from 'lucide-react'; // 仅保留实际渲染中使用的图标
 import { motion, AnimatePresence } from 'motion/react';
 import type { AnalysisResult } from './analysisTypes';
 
@@ -169,70 +169,103 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] text-[#1D1D1F] font-sans selection:bg-emerald-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-              <Utensils size={22} />
+    <div className="min-h-screen" style={{ background: 'var(--bg-page)', color: 'var(--text-primary)' }}>
+      {/* Nav：毛玻璃顶栏，内容极简，品牌名居中或左对齐 */}
+      <header
+        style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: 'rgba(245,245,247,0.82)',
+          backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          borderBottom: '1px solid var(--border-subtle)',
+        }}
+      >
+        <div className="max-w-5xl mx-auto px-8" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52 }}>
+          {/* Logo + 品牌名：字重 600，tracking 略收紧 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 28, height: 28, background: 'var(--color-accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Utensils size={15} color="#fff" />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">NutriScan AI</h1>
+            <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.3px', color: 'var(--text-primary)' }}>NutriScan AI</span>
           </div>
+          {/* 重新扫描：文字按钮，不用图标干扰 */}
           {image && (
-            <button 
+            <button
               onClick={reset}
-              className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+              style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-accent)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '-0.1px' }}
             >
-              <RefreshCw size={16} />
               重新扫描
             </button>
           )}
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-12">
+      {/* 主内容区：水平 padding 宽松，给内容足够呼吸空间 */}
+      <main style={{ maxWidth: 1000, margin: '0 auto', padding: '0 32px' }}>
         <AnimatePresence mode="wait">
           {!image && !isCameraActive ? (
             <motion.div
               key="upload-area"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 32 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '72vh', textAlign: 'center' }}
             >
-              <div className="max-w-xl">
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-                  看懂这一餐的 <br /> 营养组成。
+              {/* Hero：Apple 式超大标题，字重 700，tracking 极收紧 */}
+              <div style={{ maxWidth: 680 }}>
+                {/* 标签徽章：极克制中性灰，字母间距拉开增加精致感 */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--color-accent-subtle)', borderRadius: 100, padding: '5px 14px', marginBottom: 32 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent-mid)' }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-accent-mid)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>AI 营养分析</span>
+                </div>
+
+                <h2 style={{ fontSize: 'clamp(44px, 7vw, 72px)', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.06, color: 'var(--text-primary)', margin: '0 0 24px' }}>
+                  看懂这一餐的<br />营养组成。
                 </h2>
-                <p className="text-lg text-gray-500 mb-10">
-                  上传或拍摄餐食照片，即刻识别主要食材，
-                  估算营养成分，并获得健康评分。
+
+                <p style={{ fontSize: 19, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6, letterSpacing: '-0.01em', margin: '0 0 56px', maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
+                  拍一张照片，AI 即刻识别食材、估算热量与营养比例，并给出健康评分。
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center gap-3 bg-white border border-black/10 px-8 py-4 rounded-2xl font-medium hover:bg-gray-50 transition-all shadow-sm active:scale-95"
-                  >
-                    <Upload size={20} className="text-emerald-500" />
-                    上传照片
-                  </button>
+                {/* CTA 按钮组：主操作绿色填充，次操作浅色轮廓 */}
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={startCamera}
-                    className="flex items-center justify-center gap-3 bg-emerald-500 text-white px-8 py-4 rounded-2xl font-medium hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200 active:scale-95"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'var(--color-accent)', color: '#fff',
+                      padding: '14px 28px', borderRadius: 980, border: 'none',
+                      fontSize: 16, fontWeight: 600, letterSpacing: '-0.2px',
+                      cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+                      transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 28px rgba(0,0,0,0.24)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.18)'; }}
                   >
-                    <Camera size={20} />
+                    <Camera size={18} />
                     拍照分析
                   </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'rgba(255,255,255,0.9)', color: 'var(--text-secondary)',
+                      padding: '14px 28px', borderRadius: 980,
+                      border: '1px solid var(--border-medium)',
+                      fontSize: 16, fontWeight: 500, letterSpacing: '-0.2px',
+                      cursor: 'pointer', boxShadow: 'var(--shadow-card)',
+                      transition: 'transform 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.background = '#fff'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = ''; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.9)'; }}
+                  >
+                    <Upload size={18} />
+                    上传照片
+                  </button>
                 </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
+
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
               </div>
             </motion.div>
           ) : isCameraActive ? (
@@ -268,128 +301,122 @@ export default function App() {
           ) : (
             <motion.div
               key="results-view"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-12"
+              transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '48px 40px', paddingTop: 48, paddingBottom: 64 }}
             >
-              {/* Left Column: Image & Basic Info */}
-              <div className="lg:col-span-5 space-y-8">
-                <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5">
-                  <img
-                    src={image!}
-                    alt="已上传的餐食"
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+              {/* 左列：图片 + 健康评分卡 */}
+              <div style={{ gridColumn: 'span 5', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* 图片容器：16:9 比例感，大圆角 + 多层阴影 */}
+                <div style={{ position: 'relative', borderRadius: 24, overflow: 'hidden', boxShadow: 'var(--shadow-deep)', aspectRatio: '1 / 1' }}>
+                  <img src={image!} alt="已上传的餐食" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} referrerPolicy="no-referrer" />
+                  {/* 分析中遮罩：毛玻璃 + 脉冲动画 */}
                   {isAnalyzing && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center text-emerald-600">
-                      <Loader2 size={48} className="animate-spin mb-4" />
-                      <p className="font-medium animate-pulse">正在分析这餐...</p>
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                      <Loader2 size={36} style={{ color: 'var(--color-accent-mid)', animation: 'spin 1s linear infinite' }} />
+                      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-accent-mid)', letterSpacing: '-0.1px' }}>正在分析这餐…</p>
                     </div>
                   )}
                 </div>
 
+                {/* 健康评分卡：Apple 风格大数字 + 进度条 */}
                 {result && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white p-8 rounded-3xl shadow-sm border border-black/5"
+                    transition={{ delay: 0.15 }}
+                    style={{ background: 'var(--bg-card)', borderRadius: 20, padding: '24px 24px 20px', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border-subtle)' }}
                   >
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">健康评分</h3>
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        result.healthScore > 70 ? 'bg-emerald-100 text-emerald-700' : 
-                        result.healthScore > 40 ? 'bg-amber-100 text-amber-700' : 
-                        'bg-rose-100 text-rose-700'
-                      }`}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-quaternary)' }}>健康评分</span>
+                      {/* 等级标签：用灰阶语义色，不用饱和彩色 */}
+                      <span style={{
+                        fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100,
+                        background: result.healthScore > 70 ? 'rgba(0,0,0,0.06)' : result.healthScore > 40 ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.05)',
+                        color: result.healthScore > 70 ? 'var(--text-primary)' : result.healthScore > 40 ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                      }}>
                         {result.healthScore > 70 ? '优秀' : result.healthScore > 40 ? '良好' : '一般'}
-                      </div>
+                      </span>
                     </div>
-                    <div className="flex items-end gap-4">
-                      <span className="text-6xl font-bold tracking-tighter">{result.healthScore}</span>
-                      <span className="text-gray-400 mb-2 font-medium">/ 100</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 16 }}>
+                      <span style={{ fontSize: 56, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1, color: 'var(--text-primary)' }}>{result.healthScore}</span>
+                      <span style={{ fontSize: 16, fontWeight: 400, color: 'var(--text-quaternary)' }}>/ 100</span>
                     </div>
-                    <div className="mt-6 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    {/* 进度条：细线设计，不用粗色块 */}
+                    <div style={{ height: 3, background: 'rgba(0,0,0,0.06)', borderRadius: 99, overflow: 'hidden' }}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${result.healthScore}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        className={`h-full rounded-full ${
-                          result.healthScore > 70 ? 'bg-emerald-500' : 
-                          result.healthScore > 40 ? 'bg-amber-500' : 
-                          'bg-rose-500'
-                        }`}
+                        transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        style={{ height: '100%', borderRadius: 99, background: result.healthScore > 70 ? 'var(--color-accent)' : result.healthScore > 40 ? 'var(--color-accent-mid)' : '#3A3A3C' }}
                       />
                     </div>
                   </motion.div>
                 )}
               </div>
 
-              {/* Right Column: Analysis Data */}
-              <div className="lg:col-span-7 space-y-10">
+              {/* 右列：菜名 + 营养卡片 + 食材列表 */}
+              <div style={{ gridColumn: 'span 7', display: 'flex', flexDirection: 'column', gap: 40, paddingTop: 4 }}>
+                {/* 错误提示：极简样式，不抢主内容 */}
                 {error && (
-                  <div className="bg-rose-50 border border-rose-100 p-6 rounded-2xl flex items-start gap-4 text-rose-800">
-                    <AlertCircle className="shrink-0" />
+                  <div style={{ background: 'rgba(255,59,48,0.06)', border: '1px solid rgba(255,59,48,0.15)', borderRadius: 16, padding: '18px 20px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <AlertCircle size={18} style={{ color: '#ff3b30', flexShrink: 0, marginTop: 1 }} />
                     <div>
-                      <p className="font-semibold">分析失败</p>
-                      <p className="text-sm opacity-90">{error}</p>
-                      <button 
-                        onClick={() => image && imageMimeType && analyzeImage(image, imageMimeType)}
-                        className="mt-3 text-sm font-bold underline underline-offset-4"
-                      >
-                        重试
-                      </button>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: '#c0392b', marginBottom: 4 }}>分析失败</p>
+                      <p style={{ fontSize: 13, color: '#c0392b', opacity: 0.8 }}>{error}</p>
+                      <button onClick={() => image && imageMimeType && analyzeImage(image, imageMimeType)} style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: '#ff3b30', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 3 }}>重试</button>
                     </div>
                   </div>
                 )}
 
                 {result ? (
-                  <div className="space-y-12">
+                  <>
+                    {/* 菜名 + 描述：Apple 式大标题，描述文字次级灰 */}
                     <section>
-                      <h2 className="text-4xl font-bold tracking-tight mb-4">{result.dishName}</h2>
-                      <p className="text-lg text-gray-500 leading-relaxed">{result.description}</p>
+                      <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.1, color: 'var(--text-primary)', margin: '0 0 12px' }}>
+                        {result.dishName}
+                      </h2>
+                      <p style={{ fontSize: 16, color: 'var(--text-tertiary)', lineHeight: 1.65, margin: 0, letterSpacing: '-0.01em' }}>{result.description}</p>
                     </section>
 
+                    {/* 营养卡片网格：热量卡深色突出，其余白底 */}
                     <section>
-                      <div className="flex items-center gap-2 mb-6">
-                        <Info size={18} className="text-emerald-500" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">营养估算</h3>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <NutrientCard label="热量" value={result.nutrition.calories} unit="kcal" color="bg-gray-900 text-white" />
-                        <NutrientCard label="蛋白质" value={result.nutrition.protein} unit="g" color="bg-emerald-50" />
-                        <NutrientCard label="碳水" value={result.nutrition.carbs} unit="g" color="bg-blue-50" />
-                        <NutrientCard label="脂肪" value={result.nutrition.fat} unit="g" color="bg-amber-50" />
-                        <NutrientCard label="膳食纤维" value={result.nutrition.fiber} unit="g" color="bg-purple-50" />
+                      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-quaternary)', marginBottom: 14 }}>营养估算</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                        <NutrientCard label="热量" value={result.nutrition.calories} unit="kcal" accent />
+                        <NutrientCard label="蛋白质" value={result.nutrition.protein} unit="g" />
+                        <NutrientCard label="碳水" value={result.nutrition.carbs} unit="g" />
+                        <NutrientCard label="脂肪" value={result.nutrition.fat} unit="g" />
+                        <NutrientCard label="膳食纤维" value={result.nutrition.fiber} unit="g" />
                         {result.nutrition.sugar !== undefined && (
-                          <NutrientCard label="糖" value={result.nutrition.sugar} unit="g" color="bg-rose-50" />
+                          <NutrientCard label="糖" value={result.nutrition.sugar} unit="g" />
                         )}
                       </div>
                     </section>
 
+                    {/* 食材列表：一行一项，极简分隔线风格 */}
                     <section>
-                      <div className="flex items-center gap-2 mb-6">
-                        <Utensils size={18} className="text-emerald-500" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">识别到的食材</h3>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3">
+                      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-quaternary)', marginBottom: 14 }}>识别到的食材</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-subtle)', overflow: 'hidden', boxShadow: 'var(--shadow-card)' }}>
                         {result.ingredients.map((ing, idx) => (
                           <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.05 }}
                             key={idx}
-                            className="group flex items-center justify-between p-4 bg-white rounded-2xl border border-black/5 hover:border-emerald-200 transition-all"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: idx * 0.04 }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: idx < result.ingredients.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
                           >
-                            <div className="flex items-center gap-4">
-                              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              {/* 小圆点：中性深灰，不用强调色 */}
+                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent-mid)', flexShrink: 0 }} />
                               <div>
-                                <p className="font-semibold text-gray-900">{ing.name}</p>
-                                {ing.description && <p className="text-xs text-gray-400 mt-0.5">{ing.description}</p>}
+                                <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>{ing.name}</p>
+                                {ing.description && <p style={{ fontSize: 12, color: 'var(--text-quaternary)', margin: '2px 0 0' }}>{ing.description}</p>}
                               </div>
                             </div>
                             {ing.amount && (
-                              <span className="text-sm font-medium text-gray-400 bg-gray-50 px-3 py-1 rounded-lg">
+                              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)', background: 'var(--bg-page)', padding: '3px 10px', borderRadius: 8, flexShrink: 0 }}>
                                 {ing.amount}
                               </span>
                             )}
@@ -397,12 +424,12 @@ export default function App() {
                         ))}
                       </div>
                     </section>
-                  </div>
+                  </>
                 ) : (
                   !isAnalyzing && !error && (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400 py-20">
-                      <Loader2 size={40} className="animate-spin mb-4 opacity-20" />
-                      <p>等待分析结果...</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', color: 'var(--text-quaternary)' }}>
+                      <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', marginBottom: 12, opacity: 0.3 }} />
+                      <p style={{ fontSize: 14 }}>等待分析结果…</p>
                     </div>
                   )
                 )}
@@ -412,23 +439,42 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="max-w-5xl mx-auto px-6 py-12 border-t border-black/5 text-center">
-        <p className="text-sm text-gray-400">
-          由 Gemini AI 提供分析能力；营养数据基于图片估算，仅供参考。
+      {/* Footer：一行极小字说明，不抢主内容注意力 */}
+      <footer style={{ maxWidth: 1000, margin: '0 auto', padding: '40px 32px', borderTop: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: 'var(--text-quaternary)', letterSpacing: '0.01em' }}>
+          由 Gemini AI 提供分析能力 · 营养数据基于图片估算，仅供参考
         </p>
       </footer>
     </div>
   );
 }
 
-function NutrientCard({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
+/**
+ * NutrientCard — 单个营养指标展示卡
+ * Apple 风格：数字巨大突出，label 极小克制，背景用浅底色而非彩色
+ */
+function NutrientCard({ label, value, unit, accent }: { label: string; value: number; unit: string; accent?: boolean }) {
   return (
-    <div className={`p-6 rounded-3xl border border-black/5 flex flex-col justify-between ${color}`}>
-      <span className="text-xs font-bold uppercase tracking-wider opacity-60 mb-4">{label}</span>
-      <div className="flex items-baseline gap-1">
-        <span className="text-3xl font-bold tracking-tighter">{value}</span>
-        <span className="text-sm font-medium opacity-60">{unit}</span>
+    <div
+      style={{
+        padding: '20px 20px 18px',
+        borderRadius: 20,
+        background: accent ? 'var(--text-primary)' : 'var(--bg-card)',
+        border: accent ? 'none' : '1px solid var(--border-subtle)',
+        boxShadow: accent ? '0 4px 16px rgba(0,0,0,0.12)' : 'var(--shadow-card)',
+        display: 'flex', flexDirection: 'column', gap: 12,
+      }}
+    >
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent ? 'rgba(255,255,255,0.5)' : 'var(--text-quaternary)' }}>
+        {label}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+        <span style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, color: accent ? '#fff' : 'var(--text-primary)' }}>
+          {value}
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: accent ? 'rgba(255,255,255,0.45)' : 'var(--text-tertiary)' }}>
+          {unit}
+        </span>
       </div>
     </div>
   );

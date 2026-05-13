@@ -49,6 +49,28 @@ function createHttpError(message: string, statusCode: number) {
   return error;
 }
 
+/**
+ * 包装重试逻辑：Gemini preview 模型偶发返回 5xx 时自动重试，避免让用户手动点重试
+ * @param fn        待执行的异步操作
+ * @param maxAttempts 最大尝试次数（含首次）
+ * @param delayMs   重试前的等待时间（ms）
+ */
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3, delayMs = 800): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      // 最后一次失败不等待，直接抛出；否则等待后重试
+      if (i < maxAttempts - 1) {
+        await new Promise<void>(r => setTimeout(r, delayMs));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 export async function analyzeDishImage(
   {imageData, mimeType}: AnalyzeRequest,
   apiKey: string | undefined,
@@ -76,7 +98,8 @@ export async function analyzeDishImage(
       
       请严格返回 JSON 格式。JSON 字段名保持 schema 中的英文命名，但所有字符串字段的内容必须使用简体中文。`;
 
-  const response = await ai.models.generateContent({
+  // 用 withRetry 包装 Gemini API 调用：预览模型偶发性错误时最多自动重试 3 次
+  const response = await withRetry(() => ai.models.generateContent({
     model: MODEL_NAME,
     contents: [
       {
@@ -96,7 +119,7 @@ export async function analyzeDishImage(
       responseMimeType: 'application/json',
       responseSchema,
     },
-  });
+  }));
 
   if (!response.text) {
     const error = createHttpError('No analysis data received from AI.', 502);

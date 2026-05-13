@@ -1,1 +1,94 @@
+/* ============================================================
+   全局样式入口
+   职责：Tailwind 基础层 + 设计 token + 全局动画定义
+   ============================================================ */
+
+/* 引入 Inter 字体：与 Apple San Francisco 视觉接近，开源可用 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Tailwind v4 基础层 */
 @import "tailwindcss";
+
+/* ── 全局设计 token ─────────────────────────────────────────── */
+:root {
+  /* 主色：Apple near-black，用于 primary CTA 和强调元素 */
+  --color-accent: #1D1D1F;
+  /* 中性银：Apple secondary label 色，用于徽章、小图标 */
+  --color-accent-mid: #6E6E73;
+  /* 主色的浅底色：极淡中性灰，用于徽章背景 */
+  --color-accent-subtle: rgba(0, 0, 0, 0.05);
+
+  /* 背景层级：三层灰度，制造空间感 */
+  --bg-page: #f5f5f7;
+  --bg-card: #ffffff;
+  --bg-elevated: #fbfbfd;
+
+  /* 文字层级：四级对比度，实现清晰排版层次 */
+  --text-primary: #1d1d1f;
+  --text-secondary: #424245;
+  --text-tertiary: #86868b;
+  --text-quaternary: #adadb0;
+
+  /* 边界：极细微的分隔，不依赖色块做区分 */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.10);
+
+  /* 阴影：多层叠加模拟真实光源，避免单一重阴影 */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-deep: 0 24px 64px rgba(0, 0, 0, 0.10), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* ── 全局重置与基础排版 ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* 抗锯齿：匹配 macOS 系统字体渲染风格 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  /* 系统字体栈：优先使用 Apple SF Pro，降级到 Inter */
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  /* 连字与字偶距：细节决定质感 */
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+}
+
+/* ── 文字选中高亮：品牌色调 ──────────────────────────────────── */
+::selection {
+  background-color: var(--color-accent-subtle);
+  color: var(--text-primary);
+}
+
+/* ── 进度条动画：健康评分 bar 用到 ──────────────────────────── */
+@keyframes fill-bar {
+  from { width: 0; }
+}
+
+/* ── 卡片悬停浮起效果 ────────────────────────────────────────── */
+@keyframes card-lift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-2px); }
+}
+
+/* ── 脉冲扫描动画：分析中状态的光晕扫描感 ──────────────────── */
+@keyframes scan-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%       { opacity: 0.8; transform: scale(1.04); }
+}
+
+/* ── 淡入上升：内容区块入场 ─────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
